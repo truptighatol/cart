@@ -1,12 +1,9 @@
-import React from 'react';
-import Box from '@mui/material/Box';
+import React, { useCallback, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
-import ImageList from '@mui/material/ImageList';
 import ImageListItem from '@mui/material/ImageListItem';
 import ImageListItemBar from '@mui/material/ImageListItemBar';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
@@ -14,8 +11,28 @@ import Select from '@mui/material/Select';
 import { useDispatch, useSelector } from "react-redux";
 import {getCurrencyExchangeRate} from "../store/action/prdouct"
 
-
 const Product = () => {
+    const productsList = [
+        {
+            img: './images/school_bag.jpg',
+            title: 'School Bag',
+            price: 1000,
+            currency: 'Rs'
+        },
+        {
+            img: './images/shoes.jpg',
+            title: 'Shoes',
+            price: 1200,
+            currency: 'Rs'
+        },
+        {
+            img: './images/watch.jpeg',
+            title: 'Watch',
+            price: 3000,
+            currency: 'Rs'
+        }
+    ];
+
     const Item = styled(Paper)(({ theme }) => ({
         ...theme.typography.body2,
         padding: theme.spacing(1),
@@ -24,20 +41,46 @@ const Product = () => {
     }));
 
     const dispatch = useDispatch();
-    const [curreny, setCurrency] = React.useState('');
+    const [currency, setCurrency] = React.useState('INR');
     const [open, setOpen] = React.useState(false);
-    // const exchangeRateResponse = useSelector(state => state.productReducer.fetchExchangeRateResponse);
-    // console.log(exchangeRateResponse);
+    const [products, setProducts] = React.useState(productsList);
+    const conversionRateUSD = useSelector(state => {
+        if (state && state.fetchExchangeRateResponse && state.fetchExchangeRateResponse.USD) {
+            return state.fetchExchangeRateResponse.USD;
+        }
+    });
 
     const handleChange = (event) => {
-        debugger;
-        if(event.target.value === 1){
-            setCurrency(event.target.value);
-        }else{
+        setCurrency(event.target.value);
+        if (!conversionRateUSD){
             dispatch(getCurrencyExchangeRate());
-            setCurrency(event.target.value);
+        }
+        else {
+            showRateAsPerCurrency(event.target.value);
         }
     };
+
+    const showRateAsPerCurrency = useCallback((currency) => {
+        switch(currency) {
+            case 'INR':
+                    setProducts(productsList);
+                break;
+            case 'USD':
+                    if (conversionRateUSD) {
+                        setProducts(productsList.map(product => {
+                            product.currency ='$';
+                            product.price = product.price * conversionRateUSD;
+                            return product;
+                        }))
+                    }
+                break;
+            default:
+        }
+    }, [conversionRateUSD, productsList]);
+
+    useEffect(()=> {
+        showRateAsPerCurrency(currency);
+    }, [conversionRateUSD, currency, showRateAsPerCurrency])
 
     const handleClose = () => {
         setOpen(false);
@@ -47,23 +90,6 @@ const Product = () => {
         setOpen(true);
     };
 
-    const itemData = [
-        {
-            img: './images/school_bag.jpeg',
-            title: 'School Bag',
-            price: '1000',
-        },
-        {
-            img: './images/shoes.jpeg',
-            title: 'Shoes',
-            price: '1200',
-        },
-        {
-            img: './images/watch.jpeg',
-            title: 'Watch',
-            price: '3000',
-        }
-    ];
     return (
         <div>
             <div style={{margin:20, textAlign:'right'}}>
@@ -72,21 +98,21 @@ const Product = () => {
                     <Select
                         labelId="demo-multiple-name-label"
                         id="demo-multiple-name"
-                        value={curreny}
+                        value={currency}
                         label="Currency"
                         onChange={handleChange}
                         open={open}
                         onClose={handleClose}
                         onOpen={handleOpen}
                     >
-                        <MenuItem value={1}>INR</MenuItem>
-                        <MenuItem value={2}>USD</MenuItem>
+                        <MenuItem value={'INR'}>INR</MenuItem>
+                        <MenuItem value={'USD'}>USD</MenuItem>
                     </Select>
                 </FormControl>
             </div>
             <Grid container spacing={2} columns={12}>
                 <Item item xs={4} spacing={2}>
-                    {itemData.map((item) => (
+                    {products.map((item) => (
                         <ImageListItem key={item.img} sx={{ m: 2 }}>
                             <img
                                 src={require(`${item.img}`)}
@@ -96,7 +122,7 @@ const Product = () => {
                             />
                             <ImageListItemBar
                                 title={item.title}
-                                subtitle={<span>Rs: {item.price}</span>}
+                                subtitle={<span>{item.currency} {item.price}</span>}
                                 position="below"
                             />
                         </ImageListItem>
